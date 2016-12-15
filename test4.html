@@ -1,0 +1,343 @@
+
+<!DOCTYPE html >
+<html lang="en" ng-app="sampleApp">
+
+<head>
+    <script src = "http://ajax.googleapis.com/ajax/libs/angularjs/1.3.14/angular.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" 
+     integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+     
+    <script src="https://www.gstatic.com/firebasejs/3.4.0/firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.4.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.4.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.4.0/firebase-database.js"></script>
+    <!-- AngularFire -->
+    <script src="https://cdn.firebase.com/libs/angularfire/2.0.1/angularfire.min.js"></script>
+    <script>
+  // Initialize Firebase
+        var config = {
+            apiKey: "AIzaSyCXFtwLf5sImc2FEso17Uj9suNORnSpvx4",
+            authDomain: "my-test-project-8e38e.firebaseapp.com",
+            databaseURL: "https://my-test-project-8e38e.firebaseio.com",
+            storageBucket: "my-test-project-8e38e.appspot.com",
+            messagingSenderId: "144080736145"
+        };
+        firebase.initializeApp(config);
+    </script>
+
+     <style>
+         body {
+            background-color: powderblue;
+            }
+        .main-content {
+            padding: 100px 15px;
+            }
+        .container{
+   
+        width:50%;
+        text-align:center;
+    }
+
+.accordion__container {
+  
+    background: #3366ff;
+    width:30%;
+    border: 1px solid #ccc;
+    padding: 90px 50px;
+}
+.accordion__tab {
+    background: #aaa;
+    color: #000000;
+    border-bottom: 1px solid white;
+
+}
+.accordion__tab-title {
+    background:  #99b3ff;
+    padding: 5px;
+    cursor: pointer;
+}
+.accordion__tab-content {
+    background:  #ccd9ff;
+    /*padding: 20px;*/
+  
+}
+.accordion__tab-contentdet {
+    background:#0059b3;
+    padding: 20px;
+    cursor: pointer;
+    margin:0;
+     border-bottom: 1px solid white;
+}
+.active{
+	background-color:#8ec16d;
+}
+</style>
+</head>
+ <body ng-controller="CoVedaCtrl">
+        <div class="container accordion__container" ng-controller="CoVedaCtrl as store">
+
+            <div class="accordion__tab" ng-repeat="product in store.products">
+                <div class="accordion__tab-title" ng-click="openTab(product.Category)">{{product.Category}}</div>
+                <div class="accordion__tab-content" ng-show="isOpenTab(product.Category)">
+
+                    <div class="accordion__tab-contentdet" ng-repeat="prodDet in product.productDet"  
+                                ng-class="{active:prodDet.active}">
+                     <em class="pull-left"> 
+                         <input  type="number" step="(prodDet.minInc)" min="0" max="prodDet.totStock" value=0 placeholder=0 style="width: 4em" 
+                             ng-model="order.prodQty"    ng-click="isSelected(prodDet,order.prodQty)" ng-change="addOrder(prodDet,order.prodQty)"></input> 
+                     </em>
+                         {{prodDet.productName}}   
+                     <em>&#8377; {{prodDet.Price}}</em>
+                     
+                     <em ng-show="order.prodQty>0">Total Cost:{{order.prodQty*prodDet.Price|number:2}}</em>
+                       <!--  {{userOrder.totOrderVal}}-->
+
+                    </div>
+                    <div> 
+                       
+                </div>
+              
+
+            </div>
+             </div>
+            <div class="total">
+                <!-- Calculate the total price of all chosen products. Format it as currency. -->
+                <em class="pull-left ">Total Items:{{totalItems}}</em>
+                <em> My Order </em>
+                <em class="pull-right ">Total Price: &#8377;  {{ totalUserCost}}</em>
+               <!-- Total: <span>{{Total}}</span>-->
+                
+           
+             
+        </div>
+            <div class="submit">
+                <button class="btn btn-primary btn-sm" ng-click="submitOrder()">Submit Order</button>
+            </div>
+        </div>                                  
+    
+        
+      
+        
+    <script>
+       var app=angular.module("sampleApp",["firebase"]);
+       /*app.factory('Item', function() {
+            function Item() {
+                this.total = function() {
+                return (this.qty * this.prize) || 0;
+              }
+            }
+
+            return Item;
+       });*/
+       app.controller("CoVedaCtrl", ["$scope", "$firebaseArray", "$firebaseObject",
+                function($scope, $firebaseArray,$firebaseObject) {
+                   
+                    var ref = firebase.database().ref("Products/");
+                    
+                    var list = $firebaseArray(ref);
+                    var obj = $firebaseObject(ref);
+                    $scope.userOrderList={};
+                    $scope.productOrder={};
+                    $scope.orderObj={}; 
+                    
+                       //  console.log($scope.prodQty);
+                   
+                    // add an item
+                    //list.$add({ foo: "bar" }).then(...);
+
+                    // remove an item
+                    //list.$remove(2).then(...);
+
+                    // make the list available in the DOM
+                    $scope.list = list;
+                    // console.log(list);
+                    $scope.activeTabs = [];
+                    // check if the tab is active
+                    $scope.isOpenTab = function (tab) {
+                    // check if this tab is already in the activeTabs array
+        
+                    if ($scope.activeTabs.indexOf(tab) > -1) {
+                        // if so, return true
+                        return true;
+                     } else {
+                        // if not, return false
+                        return false;
+                        }
+                    }
+
+                    // function to 'open' a tab
+                    $scope.openTab = function (tab) {
+                        // check if tab is already open
+                        if ($scope.isOpenTab(tab)) {
+                            //if it is, remove it from the activeTabs array
+                            $scope.activeTabs.splice($scope.activeTabs.indexOf(tab), 1);
+            
+            
+                        } else {
+                            // if it's not, add it!
+                            $scope.activeTabs.push(tab);
+           
+             
+                        }
+                    }
+
+                    //Initialization of variables
+
+                    var i =0;
+                    var productsArray=[];
+                    var productsDetObj={};
+                    var subProductsDetObj={};
+                                     
+                    obj.$loaded().then(function() {
+                        // To iterate the key/value pairs of the object, use angular.forEach()
+                        angular.forEach(obj, function(value, key) { //start of object 1 for key=atta/dal-beans
+                                var productsObj={}; //reset values
+                                var productDetArray=[];//reset values
+                                productDetObj=value; //assign the products detail object
+                                // console.log("for "+productsObj.category);
+                                productsObj.Category=key;//assigned Atta
+
+                                angular.forEach(productDetObj, function(value,key){ //start of obj 2 loop for product details key=bajra/besan
+                                    //console.log("for "+key);
+                                 
+                                    var newProductDetObj={};
+                                    newProductDetObj.productName=key; ///assign bajra/besan
+                                    subProductsDetObj=value;
+                                    //console.log("for "+newProductDetObj.productName);
+
+                                    angular.forEach(subProductsDetObj, function(value,key){ //start of obj 3 loop for key= active
+                                      
+                                            //console.log(key,value);
+                                            newProductDetObj[key]=value;
+                                            //console.log(productsObj);
+                                            //console.log(newProductDetObj);
+                                                
+                                            }); //end of obj 3
+                                  
+                                    productDetArray.push(newProductDetObj); //create product details array under Atta
+                                    //assign the category
+                                  
+                                                           
+                                    }); //end of object 2
+                             
+                                productsObj.productDet=  productDetArray;//creating the product object
+                                productsArray.push(productsObj); //creating the array of products objects
+                                //console.log( productsArray);
+                          
+                            });//end of object 1
+                     }); //end of loaded date 
+                    
+                    this.products=productsArray;  
+
+                    //function to assign value to step--not working!!
+                    $scope.assignStep=function(x){
+                       return x;
+                    }    
+                    //var totalUserCost=0;
+                    $scope.isSelected = function (s,pqty) {
+                        var itemCost=0;
+                        if(pqty>0){
+                            s.active = true;//!s.active;
+                            
+                        }
+                        else {
+                            s.active=false;
+                            
+                        }
+                       
+                    }//end of isSelected function
+                          
+                    //Function to calculate total Price. total items and add an order of the items selected
+                   
+                
+                   //****************************************************************************
+                     $scope.addOrder= function (s,pqty) {
+                        var itemCost=0;
+                        var totalUserCost=0;
+                        var inStock=true;
+                        
+                        if(pqty>=0){
+                            itemCost=s.Price*pqty;
+                           //check if stock is available
+                            if(s.totStock<pqty){
+                               alert(s.productName+" stock Insufficient. Enter a value less than "+s.totStock);
+                               inStock=false;
+                            }
+
+                        }
+                       
+                        if(pqty>0 && inStock){    
+
+                            $scope.userOrderList[s.productName]=itemCost;
+                            $scope.productOrder[s.productName]=pqty;
+                        }
+                        else if(pqty==0){
+                            //incase the order has value 0 delete it from teh order list
+                            delete $scope.userOrderList[s.productName];
+                            delete $scope.productOrder[s.productName];
+
+                        }   
+                           console.log($scope.productOrder);
+
+                        angular.forEach($scope.userOrderList, function (value,key) {
+                            //calculate the sum of the items in the order list
+                            totalUserCost  +=value;   
+                                
+                        });
+
+                        $scope.totalUserCost= totalUserCost;
+                        $scope.totalItems=Object.keys( $scope.userOrderList).length;
+                        
+                      
+
+                    }//end of addorder
+                    
+                    $scope.submitOrder = function(){
+                        var productDetObj={};
+                        angular.forEach(obj, function (value,key) {
+                            //check if stock exists
+                            productDetObj=value;
+                               
+                         /*angular.forEach(productDetObj2, function (value,key) {
+                                console.log(key);
+                                if(key in obj) {
+                                // console.log(obj[key]);
+                                }
+                             });*/
+                                
+                        });
+                       
+                        
+                        var today = new Date();
+                        var dd = today.getDate();
+                        var mm = today.getMonth()+1; //January is 0!
+                        var yyyy = today.getFullYear();
+                        var user="user1";
+
+                        if(dd<10) {
+                            dd='0'+dd
+                        } 
+
+                        if(mm<10) {
+                            mm='0'+mm
+                        } 
+
+                        today = dd+mm+yyyy;
+                        //console.log(today); 
+
+                        $scope.productOrder['OrderDate']=today;
+                        $scope.productOrder['userid']=user;
+                        //console.log($scope.productOrder); 
+
+                        firebase.database().ref("userOrders/" + today+"/" + user).set($scope.productOrder);
+                    }//end of submitOrder
+               
+                }
+            ]);//end of controller
+
+  
+ 
+</script>
+</body>
+</html>
